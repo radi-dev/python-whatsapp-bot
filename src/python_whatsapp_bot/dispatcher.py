@@ -71,6 +71,7 @@ class Dispatcher:
             if self.mark_as_read:
                 self.bot.mark_as_read(_message)
             update = Update(self.bot, value)
+            print("\n\nupdate: ", update)
 
             # check if a next step handler has been registered
             persistent_handlers = [i for i in self.registered_handlers if i.persistent]
@@ -136,6 +137,7 @@ class Dispatcher:
             if self.mark_as_read:
                 self.bot.mark_as_read(_message)
             update = Update(self.bot, value)
+            print("\n\nupdate: ", update)
 
             # check if a next step handler has been registered
             persistent_handlers = [i for i in self.registered_handlers if i.persistent]
@@ -227,7 +229,7 @@ class Dispatcher:
                     update, context=User_context(update.user_phone_number)
                 )
             else:
-                await handler.arun(update)
+                await handler.run(update)
             return True
         return False
 
