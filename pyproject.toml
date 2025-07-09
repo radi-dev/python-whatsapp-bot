@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "python-whatsapp-bot"
-version = "2.0.0"
+version = "2.0.1"
 authors = [{name="Radi", email="evaradi18@gmail.com"},]
 description = "A whatsapp client library for python using the new WhatsApp cloud API"
 readme = "README.md"
