@@ -43,7 +43,12 @@ def headers(WA_TOKEN):
 
 def mark_as_read(update, url: str, token: str):
     payload = json.dumps(
-        {"messaging_product": "whatsapp", "status": "read", "message_id": update["id"]}
+        {
+            "messaging_product": "whatsapp",
+            "status": "read",
+            "message_id": update["id"],
+            "typing_indicator": {"type": "text"},
+        }
     )
     response = requests.post(url, headers=headers(token), data=payload, timeout=TIMEOUT)
     return response
