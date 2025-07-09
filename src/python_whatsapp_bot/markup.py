@@ -1,11 +1,32 @@
-from typing import Union
+from typing import Any, Dict, Union
 
 
 class Reply_markup:
-    def __init__(self, markup) -> None:
+    type: str
+
+    def __init__(self, markup: Dict[str, Any]) -> None:
         self.markup = markup
+
     # if item is for keyboard, initialize with button settings
     # if item is for list actions, initialize with list settings
+
+
+class InlineLocationRequest(Reply_markup):
+    """This is used to request a location from the user.
+    It is a button that when clicked, opens the user's location.
+    Args:
+        text: (str),required - Specifies the text of the button
+        button_id: (str),optional - Specifies the id of the button. If not provided, it will be set to the text of the button
+    """
+
+    type: str = "location_request_message"
+
+    def __init__(self, text: str):
+        self.action = self.get_action()
+        super().__init__(self.action)
+
+    def get_action(self):
+        return {"name": "send_location"}
 
 
 class Inline_button:
@@ -24,6 +45,7 @@ class Inline_button:
 class Inline_keyboard(Reply_markup):
     """Accepts only three(3) text (or buttons) in a flat list.
     Minimum of one(1)"""
+    type: str = "button"
 
     def __init__(self, inline_buttons: Union[list[str], list[Inline_button]]):
         self.inline_buttons = self.set_buttons(inline_buttons)
@@ -48,7 +70,8 @@ class Inline_keyboard(Reply_markup):
     def error_check(self):
         if len(self.inline_buttons) > 3 or len(self.inline_buttons) < 1:
             raise ValueError(
-                "Inline_keyboard can only accept minimum of 1 Inline_button item and maximum of 3")
+                f"Inline_keyboard can only accept minimum of 1 Inline_button item and maximum of 3, you added {len(self.inline_buttons)}"
+            )
         button_id_check = []
         button_text_check = []
         for i, button in enumerate(self.inline_buttons):
@@ -118,9 +141,10 @@ class Inline_list(Reply_markup):
     Accepts one level of nesting, e.g [[],[],[]].
     Args:
         button_text: (str),required - Specifies the button that displays the list items when clicked
-        list_items:(list) required - Specifies the list items to be listed. Maximum of ten items. 
+        list_items:(list) required - Specifies the list items to be listed. Maximum of ten items.
             These Items are defined with the List_item class.
             To use sections, pass a list of List_section instances instead"""
+    type: str = "list"
 
     def __init__(self, button_text: str, list_items: Union[list[List_item], list[List_section]]):
         self.button_text = button_text

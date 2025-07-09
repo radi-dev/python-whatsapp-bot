@@ -2,7 +2,7 @@ import mimetypes
 import os
 from pathlib import Path
 import re
-from typing import Union
+from typing import Optional, Union
 import json
 import requests
 from .markup import (
@@ -12,6 +12,7 @@ from .markup import (
     Inline_list,
     List_item,
     List_section,
+    InlineLocationRequest,
 )
 
 TIMEOUT: int = 30
@@ -97,7 +98,7 @@ def message_interactive(
         "recipient_type": "individual",
         "type": "interactive",
         "interactive": {
-            "type": _get_markup_type(reply_markup),
+            "type": reply_markup.type,  # [button, list, location_request_message]
             "body": {"text": text},
             "action": reply_markup.markup,
         },
@@ -150,13 +151,6 @@ def message_template(
     )
     response = requests.post(url, headers=headers(token), data=payload, timeout=TIMEOUT)
     return response
-
-
-def _get_markup_type(markup):
-    if isinstance(markup, Inline_keyboard):
-        return "button"
-    elif isinstance(markup, Inline_list):
-        return "list"
 
 
 def upload_media(url: str, token: str):
@@ -248,15 +242,56 @@ def message_media(
 
 
 def message_location(
-    url: str, token: str, phone_num: str, text: str, web_page_preview=True
+    url: str,
+    token: str,
+    phone_num: str,
+    location_latitude: str,
+    location_longitude: str,
+    location_name: Optional[str] = None,
+    location_address: Optional[str] = None,
 ):
+    location_data: dict = {
+        "latitude": location_latitude,
+        "longitude": location_longitude,
+    }
+    if location_name:
+        location_data["name"] = location_name
+    if location_address:
+        location_data["address"] = location_address
     payload = json.dumps(
         {
             "messaging_product": "whatsapp",
-            "to": str(phone_num),
             "recipient_type": "individual",
-            "type": "text",
-            "text": {"body": text, "preview_url": web_page_preview},
+            "to": str(phone_num),
+            "type": "location",
+            "location": location_data,
+        }
+    )
+    response = requests.post(url, headers=headers(token), data=payload, timeout=TIMEOUT)
+    return response
+
+
+def message_location_request(
+    url: str,
+    token: str,
+    phone_num: str,
+    location_latitude: str,
+    location_longitude: str,
+    location_name: Optional[str] = None,
+    location_address: Optional[str] = None,
+):
+
+    payload = json.dumps(
+        {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": str(phone_num),
+            "type": "interactive",
+            "interactive": {
+                "type": "location_request_message",
+                "body": {"text": "<BODY_TEXT>"},
+                "action": {"name": "send_location"},
+            },
         }
     )
     response = requests.post(url, headers=headers(token), data=payload, timeout=TIMEOUT)

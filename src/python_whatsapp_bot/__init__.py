@@ -1,5 +1,11 @@
 from .whatsapp import Whatsapp
-from .markup import Inline_button, Inline_keyboard, Inline_list, List_item
+from .markup import (
+    Inline_button,
+    Inline_keyboard,
+    Inline_list,
+    List_item,
+    InlineLocationRequest,
+)
 from .user_context import User_context
 from .dispatcher import (
     Update,
