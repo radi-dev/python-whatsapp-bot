@@ -71,7 +71,6 @@ class Dispatcher:
             if self.mark_as_read:
                 self.bot.mark_as_read(_message)
             update = Update(self.bot, value)
-            print("\n\nupdate: ", update)
 
             # check if a next step handler has been registered
             persistent_handlers = [i for i in self.registered_handlers if i.persistent]
@@ -137,7 +136,6 @@ class Dispatcher:
             if self.mark_as_read:
                 self.bot.mark_as_read(_message)
             update = Update(self.bot, value)
-            print("\n\nupdate: ", update)
 
             # check if a next step handler has been registered
             persistent_handlers = [i for i in self.registered_handlers if i.persistent]
@@ -203,7 +201,6 @@ class Dispatcher:
                 update.message_text = handler.extract_data(_message).message_txt
                 for key, val in (extracted_data.__dict__).items():
                     setattr(update, key, val)
-                # print("\n\nextracted_data: ", extracted_data.__dict__)
 
                 handler.run(update, context=User_context(update.user_phone_number))
             else:
@@ -223,7 +220,6 @@ class Dispatcher:
                 update.message_text = handler.extract_data(_message).message_txt
                 for key, val in (extracted_data.__dict__).items():
                     setattr(update, key, val)
-                # print("\n\nextracted_data: ", extracted_data.__dict__)
 
                 await handler.arun(
                     update, context=User_context(update.user_phone_number)

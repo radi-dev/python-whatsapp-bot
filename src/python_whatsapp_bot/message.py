@@ -165,7 +165,6 @@ def upload_media(url: str, token: str):
 
 def get_media_url(base_url: str, media_id: str, token: str):
     url = f"{base_url}/{media_id}"
-    print(url)
     response = requests.get(url, headers=headers(token), timeout=TIMEOUT)
     return response
 
