@@ -15,7 +15,7 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: "https://your-docusaurus-site.example.com",
+  url: "https://python-whatsapp-bot.radidev.com/",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/",
@@ -111,11 +111,11 @@ const config: Config = {
           items: [
             {
               label: "Stack Overflow",
-              href: "https://stackoverflow.com/questions/tagged/docusaurus",
+              href: "https://stackoverflow.com/questions/tagged/radi-dev",
             },
             {
               label: "Discord",
-              href: "https://discordapp.com/invite/docusaurus",
+              href: "https://discordapp.com/invite/radidev",
             },
             {
               label: "X",
@@ -137,11 +137,11 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} python-whatsapp-bot docs, Inc. Built with Docusaurus.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: prismThemes.oceanicNext,
+      darkTheme: prismThemes.oneDark,
     },
   } satisfies Preset.ThemeConfig,
 };
