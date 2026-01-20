@@ -1,6 +1,6 @@
 import re
 import inspect
-from typing import Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 from .markup import Reply_markup
 from .error_handlers import keys_exists
@@ -8,25 +8,26 @@ from .error_handlers import keys_exists
 
 class Update:
 
-    def __init__(self, bot, update) -> None:
+    def __init__(self, bot, update):
+        # type: (Any, Dict[str, Any]) -> None
         self.bot = bot
-        self.value = update
-        self.message = self.value.get("messages", [{}])[0]
-        self.user = self.value.get("contacts", [{}])[0]
-        self.user_display_name: str = self.user.get("profile", {}).get("name", "")
-        self.user_phone_number = self.user.get("wa_id", "")
-        self.message_id: str = self.message.get("id")
-        self.message_text: str = None
-        self.interactive_text: str = None
-        self.media_url: str = None
-        self.media_mime_type: str = None
-        self.media_file_id: str = None
-        self.media_hash: str = None
-        self.media_voice: bool = False
-        self.loc_address: str = None
-        self.loc_name: str = None
-        self.loc_latitude: str = None
-        self.loc_longitude: str = None
+        self.value = update  # type: Dict[str, Any]
+        self.message = self.value.get("messages", [{}])[0]  # type: Dict[str, Any]
+        self.user = self.value.get("contacts", [{}])[0]  # type: Dict[str, Any]
+        self.user_display_name = self.user.get("profile", {}).get("name", "")  # type: str
+        self.user_phone_number = self.user.get("wa_id", "")  # type: str
+        self.message_id = self.message.get("id")  # type: Optional[str]
+        self.message_text = None  # type: Optional[str]
+        self.interactive_text = None  # type: Optional[str]
+        self.media_url = None  # type: Optional[str]
+        self.media_mime_type = None  # type: Optional[str]
+        self.media_file_id = None  # type: Optional[str]
+        self.media_hash = None  # type: Optional[str]
+        self.media_voice = False  # type: bool
+        self.loc_address = None  # type: Optional[str]
+        self.loc_name = None  # type: Optional[str]
+        self.loc_latitude = None  # type: Optional[str]
+        self.loc_longitude = None  # type: Optional[str]
 
     #     self._initialize_message_text()
 
@@ -40,21 +41,23 @@ class Update:
     #         self.interactive_text = self.message["interactive"]["button_reply"]
     #         self.message_text = self.message["interactive"]["button_reply"]["id"]
 
-    def set_message_text(self, text: str):
+    def set_message_text(self, text):
+        # type: (str) -> None
         self.message_text = text
 
     def reply_message(
         self,
-        text: str,
-        reply_markup: Reply_markup = None,
-        header: str = None,
-        header_type: str = "text",
-        footer: str = None,
-        web_page_preview: bool = True,
-        tag_message: bool = True,
+        text,  # type: str
+        reply_markup=None,  # type: Optional[Reply_markup]
+        header=None,  # type: Optional[str]
+        header_type="text",  # type: str
+        footer=None,  # type: Optional[str]
+        web_page_preview=True,  # type: bool
+        tag_message=True,  # type: bool
         *args,
-        **kwargs,
+        **kwargs
     ):
+        # type: (...) -> Any
         return self.bot.reply_message(
             self.user_phone_number,
             text,
@@ -71,12 +74,13 @@ class Update:
 
     def reply_media(
         self,
-        media_path,
-        caption: str = None,
-        media_provider_token: str = None,
+        media_path,  # type: str
+        caption=None,  # type: Optional[str]
+        media_provider_token=None,  # type: Optional[str]
         *args,
-        **kwargs,
+        **kwargs
     ):
+        # type: (...) -> Any
         return self.bot.reply_media(
             self.user_phone_number,
             media_path,
@@ -88,40 +92,44 @@ class Update:
 
 
 class UpdateData:
-    def __init__(self) -> None:
-        self.message_txt = ""
-        self.list_reply = None
+    def __init__(self):
+        # type: () -> None
+        self.message_txt = ""  # type: str
+        self.list_reply = None  # type: Optional[Any]
 
         # Media
-        self.media_mime_type: str = None
-        self.media_file_id: str = None
-        self.media_hash: str = None
-        self.media_voice: bool = False
+        self.media_mime_type = None  # type: Optional[str]
+        self.media_file_id = None  # type: Optional[str]
+        self.media_hash = None  # type: Optional[str]
+        self.media_voice = False  # type: bool
 
         # Location
-        self.loc_address: str = None
-        self.loc_name: str = None
-        self.loc_latitude: str = None
-        self.loc_longitude: str = None
+        self.loc_address = None  # type: Optional[str]
+        self.loc_name = None  # type: Optional[str]
+        self.loc_latitude = None  # type: Optional[str]
+        self.loc_longitude = None  # type: Optional[str]
 
 
 class UpdateHandler:
-    def __init__(self, context: bool = True, *args, **kwargs) -> None:
-        self.name: str = None
-        self.regex: str = None
-        self.func: Callable
-        self.action: Callable
-        self.context = context
-        self.list = None
-        self.button = None
-        self.persistent = False
+    def __init__(self, context=True, *args, **kwargs):
+        # type: (bool, *Any, **Any) -> None
+        self.name = None  # type: Optional[str]
+        self.regex = None  # type: Optional[str]
+        self.func = None  # type: Optional[Callable]
+        self.action = None  # type: Optional[Callable]
+        self.context = context  # type: bool
+        self.list = None  # type: Optional[bool]
+        self.button = None  # type: Optional[bool]
+        self.persistent = False  # type: bool
 
-    def extract_data(self, msg: Dict[str, dict]) -> UpdateData:
+    def extract_data(self, msg):
+        # type: (Dict[str, dict]) -> UpdateData
         data = UpdateData()
         data.message_txt = ""
         return data
 
-    def filter_check(self, msg) -> bool:
+    def filter_check(self, msg):
+        # type: (str) -> bool
         if self.regex:
             return bool(re.match(self.regex, msg))
         if self.func:
@@ -129,6 +137,7 @@ class UpdateHandler:
         return True
 
     def run(self, *args, **kwargs):
+        # type: (*Any, **Any) -> Any
         new_kwargs = {
             key: val
             for key, val in kwargs.items()
@@ -137,6 +146,7 @@ class UpdateHandler:
         return self.action(*args, **new_kwargs)
 
     async def arun(self, *args, **kwargs):
+        # type: (*Any, **Any) -> Any
         new_kwargs = {
             key: val
             for key, val in kwargs.items()
@@ -176,14 +186,15 @@ class InteractiveQueryHandler(UpdateHandler):
 
     def __init__(
         self,
-        regex: str = None,
-        func: Callable = None,
-        handle_button: bool = True,
-        handle_list: bool = True,
-        action: Callable = None,
-        context: bool = True,
-        persistent: bool = False,
-    ) -> None:
+        regex=None,  # type: Optional[str]
+        func=None,  # type: Optional[Callable]
+        handle_button=True,  # type: bool
+        handle_list=True,  # type: bool
+        action=None,  # type: Optional[Callable]
+        context=True,  # type: bool
+        persistent=False,  # type: bool
+    ):
+        # type: (...) -> None
         super().__init__(context)
         self.name = "interactive"
         self.regex = regex
@@ -221,11 +232,13 @@ class MediaHandler(UpdateHandler):
 
 
 class ImageHandler(MediaHandler):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        # type: (*Any, **Any) -> None
+        super(ImageHandler, self).__init__(*args, **kwargs)
         self.name = "image"
 
-    def extract_data(self, msg) -> UpdateData:
+    def extract_data(self, msg):
+        # type: (Dict[str, Any]) -> UpdateData
         data = UpdateData()
         img_data = msg.get("image", {})
         data.message_txt = img_data.get("caption", "")
@@ -236,11 +249,13 @@ class ImageHandler(MediaHandler):
 
 
 class AudioHandler(MediaHandler):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        # type: (*Any, **Any) -> None
+        super(AudioHandler, self).__init__(*args, **kwargs)
         self.name = "audio"
 
-    def extract_data(self, msg) -> UpdateData:
+    def extract_data(self, msg):
+        # type: (Dict[str, Any]) -> UpdateData
         data = UpdateData()
         audio_data = msg.get("audio", {})
         data.media_mime_type = audio_data.get("mime_type", "")
@@ -251,11 +266,13 @@ class AudioHandler(MediaHandler):
 
 
 class VideoHandler(MediaHandler):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        # type: (*Any, **Any) -> None
+        super(VideoHandler, self).__init__(*args, **kwargs)
         self.name = "video"
 
-    def extract_data(self, msg) -> UpdateData:
+    def extract_data(self, msg):
+        # type: (Dict[str, Any]) -> UpdateData
         data = UpdateData()
         vid_data = msg.get("video", {})
         data.message_txt = vid_data.get("caption", "")
@@ -266,11 +283,13 @@ class VideoHandler(MediaHandler):
 
 
 class StickerHandler(MediaHandler):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        # type: (*Any, **Any) -> None
+        super(StickerHandler, self).__init__(*args, **kwargs)
         self.name = "sticker"
 
-    def extract_data(self, msg) -> UpdateData:
+    def extract_data(self, msg):
+        # type: (Dict[str, Any]) -> UpdateData
         data = UpdateData()
         stckr_data = msg.get("sticker", {})
         data.media_mime_type = stckr_data.get("mime_type", "")
@@ -282,20 +301,22 @@ class StickerHandler(MediaHandler):
 class LocationHandler(UpdateHandler):
     def __init__(
         self,
-        regex: str = None,
-        func: Callable = None,
-        action: Callable = None,
-        context: bool = True,
-        persistent: bool = False,
-    ) -> None:
-        super().__init__(context)
+        regex=None,  # type: Optional[str]
+        func=None,  # type: Optional[Callable]
+        action=None,  # type: Optional[Callable]
+        context=True,  # type: bool
+        persistent=False,  # type: bool
+    ):
+        # type: (...) -> None
+        super(LocationHandler, self).__init__(context)
         self.name = "location"
         self.regex = regex
         self.func = func
         self.action = action
         self.persistent = persistent
 
-    def extract_data(self, msg) -> UpdateData:
+    def extract_data(self, msg):
+        # type: (Dict[str, Any]) -> UpdateData
         data = UpdateData()
         loc_data = msg.get("location", {})
         loc_name = loc_data.get("name", "")
@@ -315,13 +336,14 @@ class LocationHandler(UpdateHandler):
 class UnknownHandler(UpdateHandler):
     def __init__(
         self,
-        regex: str = None,
-        func: Callable = None,
-        action: Callable = None,
-        context: bool = True,
-        persistent: bool = False,
-    ) -> None:
-        super().__init__(context)
+        regex=None,  # type: Optional[str]
+        func=None,  # type: Optional[Callable]
+        action=None,  # type: Optional[Callable]
+        context=True,  # type: bool
+        persistent=False,  # type: bool
+    ):
+        # type: (...) -> None
+        super(UnknownHandler, self).__init__(context)
         self.name = "unknown"
         self.regex = regex
         self.func = func
@@ -332,13 +354,14 @@ class UnknownHandler(UpdateHandler):
 class UnsupportedHandler(UpdateHandler):
     def __init__(
         self,
-        regex: str = None,
-        func: Callable = None,
-        action: Callable = None,
-        context: bool = True,
-        persistent: bool = False,
-    ) -> None:
-        super().__init__(context)
+        regex=None,  # type: Optional[str]
+        func=None,  # type: Optional[Callable]
+        action=None,  # type: Optional[Callable]
+        context=True,  # type: bool
+        persistent=False,  # type: bool
+    ):
+        # type: (...) -> None
+        super(UnsupportedHandler, self).__init__(context)
         self.name = "unsupported"
         self.regex = regex
         self.func = func

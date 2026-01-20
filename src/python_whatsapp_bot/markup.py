@@ -4,7 +4,8 @@ from typing import Any, Dict, Union
 class Reply_markup:
     type: str
 
-    def __init__(self, markup: Dict[str, Any]) -> None:
+    def __init__(self, markup):
+        # type: (Dict[str, Any]) -> None
         self.markup = markup
 
     # if item is for keyboard, initialize with button settings
@@ -21,16 +22,21 @@ class InlineLocationRequest(Reply_markup):
 
     type: str = "location_request_message"
 
-    def __init__(self, text: str):
+    def __init__(self, text):
+        # type: (str) -> None
         self.action = self.get_action()
-        super().__init__(self.action)
+        super(InlineLocationRequest, self).__init__(self.action)
 
     def get_action(self):
+        # type: () -> Dict[str, str]
         return {"name": "send_location"}
 
 
 class Inline_button:
-    def __init__(self, text: str, button_id: str = None):
+    __slots__ = ('button',)
+
+    def __init__(self, text, button_id=None):
+        # type: (str, str) -> None
 
         self.button = {
             "type": "reply",
@@ -39,7 +45,6 @@ class Inline_button:
                         "title": text
                     }
         }
-    __slots__ = ('button')
 
 
 class Inline_keyboard(Reply_markup):
@@ -47,13 +52,15 @@ class Inline_keyboard(Reply_markup):
     Minimum of one(1)"""
     type: str = "button"
 
-    def __init__(self, inline_buttons: Union[list[str], list[Inline_button]]):
+    def __init__(self, inline_buttons):
+        # type: (Union[list, list]) -> None
         self.inline_buttons = self.set_buttons(inline_buttons)
         self.error_check()
         self.keyboard = self.set_keys()
-        super().__init__(self.keyboard)
+        super(Inline_keyboard, self).__init__(self.keyboard)
 
-    def set_buttons(self, _buttons: Union[list[str], list[Inline_button]]):
+    def set_buttons(self, _buttons):
+        # type: (Union[list, list]) -> list
         if not isinstance(_buttons, list):
             raise ValueError("List argument expected")
         res = []
@@ -68,6 +75,7 @@ class Inline_keyboard(Reply_markup):
         return res
 
     def error_check(self):
+        # type: () -> None
         if len(self.inline_buttons) > 3 or len(self.inline_buttons) < 1:
             raise ValueError(
                 f"Inline_keyboard can only accept minimum of 1 Inline_button item and maximum of 3, you added {len(self.inline_buttons)}"
@@ -86,31 +94,36 @@ class Inline_keyboard(Reply_markup):
             button_text_check.append(buttt)
 
     def set_keys(self):
+        # type: () -> Dict[str, list]
         action = {"buttons": [i.button for i in self.inline_buttons]}
         return action
 
 
 class List_item():
-    def __init__(self, title: str, _id: str = None, description: str = None) -> None:
+    __slots__ = ('title', 'item', '_id')
+
+    def __init__(self, title, _id=None, description=None):
+        # type: (str, str, str) -> None
         self.title = title
         self._id = _id if _id else self.title
         self.item = {
             "id": self._id,
             "title": self.title
-        }
+        }  # type: Dict[str, str]
         if description:
             self.item["description"] = description
-    __slots__ = ('title', 'item', '_id')
 
 
 class List_section():
-    def __init__(self, title: str, items_list: Union[list[str], list[List_item]]) -> None:
+    def __init__(self, title, items_list):
+        # type: (str, Union[list, list]) -> None
         self.title = title
         self.items_list = self.set_list(items_list)
         self.error_check()
         self.section = self.set_section()
 
-    def set_list(self, _items_list: Union[list[str], list[List_item]]):
+    def set_list(self, _items_list):
+        # type: (Union[list, list]) -> list
         if not isinstance(_items_list, list):
             raise ValueError("List argument expected")
         res = []
@@ -125,12 +138,14 @@ class List_section():
         return res
 
     def error_check(self):
+        # type: () -> None
         for i, item in enumerate(self.items_list):
             if not isinstance(item, List_item):
                 raise ValueError(
                     f"Item at position {i} of list argument expected to be an instance of Inline_button")
 
     def set_section(self):
+        # type: () -> Dict[str, Any]
         sections = {"title": self.title,
                     "rows": [i.item for i in self.items_list]}
         return sections
@@ -146,14 +161,16 @@ class Inline_list(Reply_markup):
             To use sections, pass a list of List_section instances instead"""
     type: str = "list"
 
-    def __init__(self, button_text: str, list_items: Union[list[List_item], list[List_section]]):
+    def __init__(self, button_text, list_items):
+        # type: (str, Union[list, list]) -> None
         self.button_text = button_text
         self.list_items = list_items
         self.error_check()
         self.inline_list = self.set_list()
-        super().__init__(self.inline_list)
+        super(Inline_list, self).__init__(self.inline_list)
 
     def error_check(self):
+        # type: () -> None
         if not isinstance(self.list_items, list):
             raise ValueError(
                 "The argument for list_items should be of type 'list'")
@@ -165,6 +182,7 @@ class Inline_list(Reply_markup):
                     f"Item at position {i} of list argument expected to be an instance of List_item or list of List_section")
 
     def set_list(self):
+        # type: () -> Dict[str, Any]
         action = {
             "button": self.button_text,
             "sections": [i.section for i in self.list_items] if isinstance(self.list_items, List_section) else [{"rows": [i.item for i in self.list_items]}]}

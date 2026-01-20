@@ -1,4 +1,7 @@
-def keys_exists(element, *keys):
+from typing import Any, Dict
+
+
+def keys_exists(element:Dict[str, Any], *keys: Any)-> bool:
     '''
     Check if *keys (nested) exists in `element` (dict). e.g:
     data = {
