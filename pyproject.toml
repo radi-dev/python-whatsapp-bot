@@ -17,6 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "requests>=2",
+    "httpx>=0.23.0",
 ]
 
 [options.packages.find]
