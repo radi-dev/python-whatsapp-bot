@@ -2,46 +2,86 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+# Getting Started
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Welcome to **python-whatsapp-bot** - a modern, feature-rich Python library for building WhatsApp bots using the WhatsApp Business Cloud API.
 
-## Getting Started
+## What You'll Learn
 
-Get started by **creating a new site**.
+This documentation will guide you through:
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+- ✅ Setting up your WhatsApp Business account
+- ✅ Installing and configuring the library
+- ✅ Sending various types of messages (text, media, templates)
+- ✅ Creating interactive messages with buttons and lists
+- ✅ Handling incoming messages with decorators
+- ✅ Using both sync and async versions of functions
+- ✅ Managing conversation state and context
+- ✅ Testing your bot
 
-### What you'll need
+## Key Features
 
-- [Node.js](https://nodejs.org/en/download/) version 20.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+### 🔄 Sync & Async Support
 
-## Generate a new site
+Every function has both synchronous and asynchronous versions:
 
-Generate a new Docusaurus site using the **classic template**.
+```python
+# Synchronous
+wa_bot.send_message('1234567890', 'Hello!')
 
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
+# Asynchronous
+await wa_bot.asend_message('1234567890', 'Hello!')
 ```
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+### 📝 Type Annotations
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+Full type hints compatible with Python 3.6+:
 
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
+```python
+def send_message(
+    phone_num,  # type: str
+    text,  # type: str
+    msg_id="",  # type: str
+):
+    # type: (...) -> Any
 ```
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+### 🎯 Interactive Messages
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
+Easily create buttons, lists, and location requests:
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+```python
+from python_whatsapp_bot import Inline_keyboard
+
+buttons = Inline_keyboard(['Option 1', 'Option 2'])
+wa_bot.send_message('1234567890', 'Choose:', reply_markup=buttons)
+```
+
+### 🤖 Decorator-Based Handlers
+
+Simple and intuitive message handling:
+
+```python
+@wa_bot.on_message(regex=r'^/start')
+def handle_start(update, context):
+    update.reply_message('Welcome!')
+```
+
+## Quick Installation
+
+```bash
+pip install --upgrade python-whatsapp-bot
+```
+
+## Prerequisites
+
+Before you begin, you'll need:
+
+1. **WhatsApp Business Account** - Sign up at [Facebook Developer Portal](https://developers.facebook.com/)
+2. **Phone Number ID** - Get this from your WhatsApp Business account
+3. **Access Token** - Generate from Facebook Developer Portal
+4. **Python 3.6+** - The library supports Python 3.6 and above
+
+## Next Steps
+
+Ready to build your first bot? Continue to the Installation Guide to get started!
