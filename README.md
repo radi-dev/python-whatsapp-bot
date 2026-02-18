@@ -2,6 +2,8 @@
 
 A modern, feature-rich Python library for building WhatsApp bots using the [WhatsApp Business Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api).
 
+Looking for NodeJs? A NodeJs version exists here: [whatsapp-cloud-bot-ts](https://github.com/radi-dev/whatsapp-cloud-bot-ts)
+
 [![Made in Nigeria](https://img.shields.io/badge/made%20in-nigeria-008751.svg?style=flat-square)](https://github.com/acekyd/made-in-nigeria)
 [![Downloads](https://pepy.tech/badge/python-whatsapp-bot)](https://pepy.tech/project/python-whatsapp-bot)
 [![Downloads](https://pepy.tech/badge/python-whatsapp-bot/month)](https://pepy.tech/project/python-whatsapp-bot)
@@ -265,7 +267,7 @@ def verify_webhook():
     mode = request.args.get('hub.mode')
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
-    
+
     if mode == 'subscribe' and token == 'YOUR_VERIFY_TOKEN':
         return challenge, 200
     return 'Forbidden', 403
@@ -452,7 +454,8 @@ pip install --upgrade python-whatsapp-bot httpx
 
 ## 🔗 Links
 
-- **Documentation**: [Full documentation site](https://radi-dev.github.io/python-whatsapp-cloud-bot/)
+- **Documentation**: [Full documentation site](https://python-whatsapp-bot.radidev.com/docs/intro)
+- **Node.js / TypeScript version**: [whatsapp-cloud-bot-ts](https://github.com/radi-dev/whatsapp-cloud-bot-ts)
 - **GitHub**: [Repository](https://github.com/Radi-dev/python-whatsapp-cloud-bot)
 - **PyPI**: [Package](https://pypi.org/project/python-whatsapp-bot/)
 - **WhatsApp API Docs**: [Official documentation](https://developers.facebook.com/docs/whatsapp/cloud-api/)
@@ -481,7 +484,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter any issues or have questions:
 - Open an [issue on GitHub](https://github.com/Radi-dev/python-whatsapp-cloud-bot/issues)
-- Check the [documentation](https://radi-dev.github.io/python-whatsapp-cloud-bot/)
+- Check the [documentation](https://python-whatsapp-bot.radidev.com/docs/intro)
 - Review [WhatsApp API documentation](https://developers.facebook.com/docs/whatsapp/cloud-api/)
 
 ---
