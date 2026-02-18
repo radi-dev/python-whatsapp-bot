@@ -2,12 +2,19 @@
 
 A modern, feature-rich Python library for building WhatsApp bots using the [WhatsApp Business Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api).
 
-Looking for NodeJs? A NodeJs version exists here: [whatsapp-cloud-bot-ts](https://github.com/radi-dev/whatsapp-cloud-bot-ts)
 
 [![Made in Nigeria](https://img.shields.io/badge/made%20in-nigeria-008751.svg?style=flat-square)](https://github.com/acekyd/made-in-nigeria)
 [![Downloads](https://pepy.tech/badge/python-whatsapp-bot)](https://pepy.tech/project/python-whatsapp-bot)
 [![Downloads](https://pepy.tech/badge/python-whatsapp-bot/month)](https://pepy.tech/project/python-whatsapp-bot)
 [![Downloads](https://pepy.tech/badge/python-whatsapp-bot/week)](https://pepy.tech/project/python-whatsapp-bot)
+
+## 🔗 Links
+
+- **Documentation**: [Full documentation site](https://python-whatsapp-bot.radidev.com/docs/intro)
+- **Node.js / TypeScript version**: [whatsapp-cloud-bot-ts](https://github.com/radi-dev/whatsapp-cloud-bot-ts)
+- **GitHub**: [Repository](https://github.com/Radi-dev/python-whatsapp-cloud-bot)
+- **PyPI**: [Package](https://pypi.org/project/python-whatsapp-bot/)
+- **WhatsApp API Docs**: [Official documentation](https://developers.facebook.com/docs/whatsapp/cloud-api/)
 
 ## ✨ Key Features
 
@@ -452,13 +459,7 @@ pip install --upgrade python-whatsapp-bot httpx
 2. Check access token is valid
 3. Ensure phone number is registered with WhatsApp Business
 
-## 🔗 Links
 
-- **Documentation**: [Full documentation site](https://python-whatsapp-bot.radidev.com/docs/intro)
-- **Node.js / TypeScript version**: [whatsapp-cloud-bot-ts](https://github.com/radi-dev/whatsapp-cloud-bot-ts)
-- **GitHub**: [Repository](https://github.com/Radi-dev/python-whatsapp-cloud-bot)
-- **PyPI**: [Package](https://pypi.org/project/python-whatsapp-bot/)
-- **WhatsApp API Docs**: [Official documentation](https://developers.facebook.com/docs/whatsapp/cloud-api/)
 
 ## 🤝 Contributing
 
