@@ -2,7 +2,6 @@
 
 import unittest
 from unittest.mock import Mock, MagicMock, patch, call
-from queue import Queue
 
 from python_whatsapp_bot.dispatcher import Dispatcher
 from python_whatsapp_bot.handler_classes import (
@@ -23,7 +22,6 @@ class TestDispatcherInitialization(unittest.TestCase):
     def setUp(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
 
     def test_init_with_defaults(self):
@@ -33,7 +31,7 @@ class TestDispatcherInitialization(unittest.TestCase):
         self.assertEqual(dispatcher.bot, self.mock_bot)
         self.assertEqual(dispatcher.mark_as_read, True)
         self.assertEqual(dispatcher.registered_handlers, [])
-        self.assertEqual(dispatcher.next_step_handler, {})
+        self.assertEqual(len(dispatcher.steps), 0)
         self.assertIsNone(dispatcher.fallback_function)
 
     def test_init_with_mark_as_read_false(self):
@@ -49,7 +47,6 @@ class TestHandlerRegistration(unittest.TestCase):
     def setUp(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.dispatcher = Dispatcher(self.mock_bot)
 
@@ -168,7 +165,6 @@ class TestUpdateProcessing(unittest.TestCase):
     def setUp(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)
@@ -336,7 +332,6 @@ class TestNextStepHandler(unittest.TestCase):
     def setUp(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)
@@ -376,13 +371,14 @@ class TestNextStepHandler(unittest.TestCase):
         
         def next_step(update, context):
             pass
+        self.dispatcher.register_step('next_step')(next_step)
         
         result = self.dispatcher.set_next_handler(
             update_obj, next_step, handler_type=MessageHandler
         )
         
         self.assertIsNone(result)
-        self.assertIn(update_obj.user_phone_number, self.dispatcher.next_step_handler)
+        self.assertIsNotNone(self.dispatcher.get_next_step(update_obj.user_phone_number))
 
     def test_next_step_handler_overrides_regular(self):
         """Test that next step handler takes precedence."""
@@ -406,6 +402,7 @@ class TestNextStepHandler(unittest.TestCase):
         def next_step(update, context):
             nonlocal next_step_called
             next_step_called = True
+        self.dispatcher.register_step('next_step')(next_step)
         
         self.dispatcher.set_next_handler(update_obj, next_step, handler_type=MessageHandler)
         
@@ -428,16 +425,17 @@ class TestNextStepHandler(unittest.TestCase):
         
         def next_step(update, context):
             pass
+        self.dispatcher.register_step('next_step')(next_step)
         
         self.dispatcher.set_next_handler(update_obj, next_step, handler_type=MessageHandler)
-        self.assertIn(phone_number, self.dispatcher.next_step_handler)
+        self.assertIsNotNone(self.dispatcher.get_next_step(phone_number))
         
         # Process next update
         update2 = self.create_text_update("second")
         self.dispatcher.process_update(update2)
         
         # Next step handler should be cleared
-        self.assertNotIn(phone_number, self.dispatcher.next_step_handler)
+        self.assertIsNone(self.dispatcher.get_next_step(phone_number))
 
     def test_end_conversation_keyword(self):
         """Test conversation end with keyword."""
@@ -447,10 +445,12 @@ class TestNextStepHandler(unittest.TestCase):
         def end_action(update, context):
             nonlocal end_action_called
             end_action_called = True
+        self.dispatcher.register_step('end_action')(end_action)
         
         def next_step(update, context):
             nonlocal next_step_called
             next_step_called = True
+        self.dispatcher.register_step('next_step')(next_step)
         
         # Set next step
         update1 = self.create_text_update("start")
@@ -478,7 +478,6 @@ class TestPersistentHandlers(unittest.TestCase):
     def setUp(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)
@@ -532,6 +531,7 @@ class TestPersistentHandlers(unittest.TestCase):
         def next_step(update, context):
             nonlocal next_step_called
             next_step_called = True
+        self.dispatcher.register_step('next_step')(next_step)
         
         self.dispatcher.set_next_handler(update_obj, next_step, handler_type=MessageHandler)
         
@@ -550,7 +550,6 @@ class TestInteractiveHandlers(unittest.TestCase):
     def setUp(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)
@@ -660,7 +659,6 @@ class TestMediaHandlers(unittest.TestCase):
     def setUp(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)

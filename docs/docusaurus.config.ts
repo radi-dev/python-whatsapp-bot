@@ -6,7 +6,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 
 const config: Config = {
   title: "python-whatsapp-bot",
-  tagline: "Docs for python-whatsapp-bot library",
+  tagline: "Build WhatsApp bots in Python with the WhatsApp Business Cloud API",
   favicon: "img/favicon.ico",
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -41,25 +41,9 @@ const config: Config = {
       {
         docs: {
           sidebarPath: "./sidebars.ts",
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl: "https://github.com/radi-dev/python-whatsapp-bot/blob/main/",
+          editUrl: "https://github.com/Radi-dev/python-whatsapp-cloud-bot/blob/main/docs/",
         },
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ["rss", "atom"],
-            xslt: true,
-          },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            "https://github.com/radi-dev/python-whatsapp-bot/blob/main/docs/",
-          // Useful options to enforce blogging best practices
-          onInlineTags: "warn",
-          onInlineAuthors: "warn",
-          onUntruncatedBlogPosts: "warn",
-        },
+        blog: false,
         theme: {
           customCss: "./src/css/custom.css",
         },
@@ -74,9 +58,9 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: "My Site",
+      title: "python-whatsapp-bot",
       logo: {
-        alt: "My Site Logo",
+        alt: "python-whatsapp-bot logo",
         src: "img/logo.svg",
       },
       items: [
@@ -84,11 +68,15 @@ const config: Config = {
           type: "docSidebar",
           sidebarId: "tutorialSidebar",
           position: "left",
-          label: "Tutorial",
+          label: "Docs",
         },
-        { to: "/blog", label: "Blog", position: "left" },
         {
-          href: "https://github.com/radi-dev/python-whatsapp-bot",
+          href: "https://pypi.org/project/python-whatsapp-bot/",
+          label: "PyPI",
+          position: "right",
+        },
+        {
+          href: "https://github.com/Radi-dev/python-whatsapp-cloud-bot",
           label: "GitHub",
           position: "right",
         },
@@ -100,44 +88,28 @@ const config: Config = {
         {
           title: "Docs",
           items: [
-            {
-              label: "Tutorial",
-              to: "/docs/intro",
-            },
+            { label: "Getting started", to: "/docs/intro" },
+            { label: "Message handlers", to: "/docs/message-handlers" },
+            { label: "Context storage", to: "/docs/context-storage" },
           ],
         },
         {
-          title: "Community",
+          title: "Project",
           items: [
-            {
-              label: "Stack Overflow",
-              href: "https://stackoverflow.com/questions/tagged/radi-dev",
-            },
-            {
-              label: "Discord",
-              href: "https://discordapp.com/invite/radidev",
-            },
-            {
-              label: "X",
-              href: "https://x.com/radi_dev",
-            },
+            { label: "PyPI", href: "https://pypi.org/project/python-whatsapp-bot/" },
+            { label: "GitHub", href: "https://github.com/Radi-dev/python-whatsapp-cloud-bot" },
+            { label: "Issues", href: "https://github.com/Radi-dev/python-whatsapp-cloud-bot/issues" },
+            { label: "Node.js / TypeScript version", href: "https://github.com/radi-dev/whatsapp-cloud-bot-ts" },
           ],
         },
         {
-          title: "More",
+          title: "WhatsApp",
           items: [
-            {
-              label: "Blog",
-              to: "/blog",
-            },
-            {
-              label: "GitHub",
-              href: "https://github.com/radi-dev/python-whatsapp-bot",
-            },
+            { label: "Cloud API documentation", href: "https://developers.facebook.com/docs/whatsapp/cloud-api/" },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} python-whatsapp-bot docs, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Radi. MIT licensed. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.oceanicNext,

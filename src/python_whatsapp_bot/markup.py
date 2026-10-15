@@ -183,7 +183,11 @@ class Inline_list(Reply_markup):
 
     def set_list(self):
         # type: () -> Dict[str, Any]
-        action = {
-            "button": self.button_text,
-            "sections": [i.section for i in self.list_items] if isinstance(self.list_items, List_section) else [{"rows": [i.item for i in self.list_items]}]}
+        if all(isinstance(i, List_section) for i in self.list_items):
+            sections = [i.section for i in self.list_items]
+        elif any(isinstance(i, List_section) for i in self.list_items):
+            raise ValueError("list_items must be either all List_item or all List_section")
+        else:
+            sections = [{"rows": [i.item for i in self.list_items]}]
+        action = {"button": self.button_text, "sections": sections}
         return action

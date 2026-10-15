@@ -1,5 +1,15 @@
+# Runtime
 requests>=2.27.1
 httpx>=0.23.0
+
+# Test-suite (or: uv pip install -e ".[dev]")
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
 pytest-httpx>=0.22.0
+
+# Optional context-storage backends exercised by the tests
+# (tests for a backend are skipped automatically if its package is missing)
+redis>=4.2
+fakeredis[lua]>=2.10
+sqlalchemy[asyncio]>=1.4
+aiosqlite>=0.17

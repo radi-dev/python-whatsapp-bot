@@ -4,172 +4,94 @@ sidebar_position: 2
 
 # Installation
 
-This guide will help you install and set up python-whatsapp-bot for your project.
-
 ## Requirements
 
-- Python 3.6 or higher
-- pip (Python package manager)
-- WhatsApp Business Account
-- Access to Facebook Developer Portal
+- Python 3.7 or higher
+- A WhatsApp Business account on the Meta for Developers portal (see below)
+- For production: an external store for conversation state - SQLite needs nothing extra; Redis,
+  Postgres and MySQL need an optional package (see below)
 
-## Install via pip
-
-The easiest way to install the library is using pip:
+## Install
 
 ```bash
 pip install --upgrade python-whatsapp-bot
 ```
 
-## Install from source
+This installs the library with its two runtime dependencies, `requests` (sync HTTP) and `httpx`
+(async HTTP).
 
-If you want the latest development version:
+### Optional: context storage backends
+
+Conversation state (`context.user_data`, multi-step conversations) is kept in a storage backend
+you choose. `SQLiteStorage` works out of the box; the others need a driver:
+
+```bash
+pip install "python-whatsapp-bot[redis]"        # RedisStorage
+pip install "python-whatsapp-bot[postgres]"     # SQLAlchemyStorage with psycopg
+pip install "python-whatsapp-bot[mysql]"        # SQLAlchemyStorage with PyMySQL
+pip install "python-whatsapp-bot[sqlalchemy]"   # SQLAlchemyStorage, bring your own driver
+```
+
+See [Context storage](./context-storage) for how to configure them.
+
+### From source
 
 ```bash
 git clone https://github.com/Radi-dev/python-whatsapp-cloud-bot.git
 cd python-whatsapp-cloud-bot
-pip install -e .
+pip install -e ".[dev]"    # editable install with everything needed to run the tests
+pytest
 ```
 
-## Verify Installation
+## WhatsApp Business setup
 
-After installation, verify it works:
+You need two credentials from the [Meta for Developers](https://developers.facebook.com/) portal.
 
-```python
-from python_whatsapp_bot import Whatsapp
+1. **Create an app** - "Create App", choose the *Business* type, then add the **WhatsApp**
+   product to it.
+2. **Phone Number ID** - under *WhatsApp → API Setup*, copy the *Phone number ID* (not the phone
+   number itself), e.g. `109123456789012`.
+3. **Access token** - the same page offers a *temporary* token that expires after 24 hours. For
+   production create a *System User* under *Business Settings* and generate a permanent token
+   with the `whatsapp_business_messaging` permission.
+4. **Webhook** - configured later, once your server is reachable. See [Webhooks](./webhooks).
 
-print("Installation successful!")
-```
-
-## Dependencies
-
-The library automatically installs these dependencies:
-
-- **requests** >= 2.0 - For synchronous HTTP requests
-- **httpx** >= 0.23.0 - For asynchronous HTTP requests
-
-### Development Dependencies
-
-For development and testing:
-
-```bash
-pip install pytest pytest-asyncio pytest-httpx
-```
-
-## WhatsApp Business Setup
-
-### Step 1: Create Facebook Developer Account
-
-1. Go to [Facebook for Developers](https://developers.facebook.com/)
-2. Click "Get Started" and create an account
-3. Complete the registration process
-
-### Step 2: Create an App
-
-1. From the dashboard, click "Create App"
-2. Select "Business" as the app type
-3. Fill in the app details
-4. Click "Create App"
-
-### Step 3: Add WhatsApp Product
-
-1. In your app dashboard, find "WhatsApp" in the products list
-2. Click "Set Up"
-3. Follow the configuration wizard
-
-### Step 4: Get Credentials
-
-You'll need two pieces of information:
-
-#### Phone Number ID
-
-1. Go to WhatsApp > Getting Started
-2. Copy the "Phone number ID" (not the phone number itself)
-3. Example: `109123456789012`
-
-#### Access Token
-
-1. In the same section, find "Temporary access token"
-2. Copy this token for testing
-3. For production, generate a permanent token:
-   - Go to Business Settings
-   - Create a System User
-   - Generate a permanent token
-
-:::warning Important
-The temporary token expires after 24 hours. For production, always use a permanent token.
+:::warning
+Never commit tokens. Keep them in environment variables or a secrets manager.
 :::
-
-### Step 5: Configure Webhook (Optional for now)
-
-We'll cover webhook setup in detail in the [Webhooks Guide](./webhooks).
-
-## Environment Variables
-
-Store your credentials safely using environment variables:
-
-```bash
-# .env file
-WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
-WHATSAPP_ACCESS_TOKEN=your_access_token
-```
-
-Load them in your Python code:
 
 ```python
 import os
-from dotenv import load_dotenv
+from python_whatsapp_bot import Whatsapp, SQLiteStorage
 
-load_dotenv()
-
-phone_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-token = os.getenv('WHATSAPP_ACCESS_TOKEN')
+wa_bot = Whatsapp(
+    number_id=os.environ['WHATSAPP_PHONE_NUMBER_ID'],
+    token=os.environ['WHATSAPP_ACCESS_TOKEN'],
+    context_storage=SQLiteStorage('bot_context.db'),
+)
 ```
 
-## First Bot
-
-Now you're ready to create your first bot:
+## Verify
 
 ```python
 from python_whatsapp_bot import Whatsapp
-
-# Initialize bot
-wa_bot = Whatsapp(
-    number_id='YOUR_PHONE_NUMBER_ID',
-    token='YOUR_ACCESS_TOKEN'
-)
-
-# Send a message
-wa_bot.send_message('1234567890', 'Hello from Python!')
+print(Whatsapp)   # no ImportError: the library is installed
 ```
 
-## Troubleshooting
+To verify the credentials, send yourself a message (the recipient must have messaged your
+business number first, or you must use an approved template):
 
-### Import Error
-
-If you get an import error:
-
-```bash
-pip uninstall python-whatsapp-bot
-pip install --upgrade python-whatsapp-bot
+```python
+wa_bot.send_message('2348145xxxxx', 'Hello from python-whatsapp-bot!')
 ```
 
-### Authentication Failed
+`send_message` returns the `requests.Response` of the API call; `response.json()` contains the
+message id on success or an `error` object otherwise.
 
-- Verify your access token is valid
-- Check if the token has expired
-- Ensure you're using the correct phone number ID
+## Graph API version
 
-### Module Not Found: httpx
+The library targets Graph API **v21.0** by default. To pin another version:
 
-Install httpx explicitly:
-
-```bash
-pip install httpx
+```python
+wa_bot.set_version(22)
 ```
-
-## Next Steps
-
-- Learn about [Sending Messages](./sending-messages)
-- Explore [Interactive Messages](./interactive-messages)
-- Set up [Message Handlers](./message-handlers)

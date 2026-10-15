@@ -19,14 +19,14 @@ A modern, feature-rich Python library for building WhatsApp bots using the [What
 ## ✨ Key Features
 
 - 🔄 **Sync & Async Support**: Mirror async versions of all functions (e.g., `send_message` and `asend_message`)
-- 📝 **Full Type Annotations**: Python 3.6+ compatible type hints throughout the codebase
+- 📝 **Full Type Annotations**: Python 3.7+ compatible type hints throughout the codebase
 - 💬 **Text Messages**: Send and receive text messages with preview support
 - 🎯 **Interactive Messages**: Buttons, lists, and location requests
 - 📄 **Template Messages**: Send pre-approved template messages
-- 📎 **Media Support**: Send and receive images, videos, audio, documents, and stickers
+- 📎 **Media Support**: Receive images, videos, audio, and stickers (with download helpers); send images by URL
 - 📍 **Location Sharing**: Send and receive location data
 - 🤖 **Handler System**: Decorator-based message handlers with regex and custom filters
-- 🔁 **Context Management**: Maintain conversation state across messages
+- 🔁 **Context Management**: Per-user conversation state in Redis, Postgres, MySQL or SQLite - safe across multiple worker processes
 - 🚀 **Easy Setup**: Simple initialization and intuitive API
 
 ## 📦 Installation
@@ -188,9 +188,9 @@ await wa_bot.asend_media_message(
     caption='Amazing photo!'
 )
 
-# Download received media
+# Download received media (saved under ./tmp/<dir>/<media_id>.<ext>)
 media_id = 'MEDIA_ID_FROM_WEBHOOK'
-file_path = wa_bot.download_media(media_id, '/downloads')
+file_path = wa_bot.download_media(media_id, 'downloads')
 print(f'Media saved to: {file_path}')
 
 # Async download
@@ -311,6 +311,26 @@ if __name__ == '__main__':
 
 ### Context and Conversation Management
 
+The `context` passed to handlers gives you a per-user `user_data` dict that survives
+between messages. It lives in **external storage that you configure** (SQLite, Redis,
+Postgres, MySQL, ...), so it keeps working when you run several worker processes
+(`uvicorn --workers 4`, `gunicorn -w 4`, multiple containers, ...).
+
+```python
+from python_whatsapp_bot import Whatsapp, SQLiteStorage
+
+wa_bot = Whatsapp(
+    number_id='YOUR_PHONE_NUMBER_ID',
+    token='YOUR_ACCESS_TOKEN',
+    context_storage=SQLiteStorage('bot_context.db'),   # <- required if handlers use `context`
+)
+```
+
+> **Note:** if any handler declares a `context` parameter and no storage is configured, the
+> bot raises `ContextStorageNotConfiguredError` on the first incoming update. It never silently
+> falls back to process memory. Handlers that don't take `context` need no storage at all.
+> See [Context storage backends](#context-storage-backends) for Redis / Postgres / MySQL.
+
 ```python
 # Store user data in context
 @wa_bot.on_message(regex=r'^/setname (.+)')
@@ -341,6 +361,117 @@ def get_user_email(update, context):
     email = context.user_data['email']
     update.reply_message(f'Registration complete!\nName: {name}\nEmail: {email}')
 ```
+
+The "next step" is stored in the user's context record (next to `user_data`, so
+`context.user_data.clear()` never aborts a conversation), which means it is shared by all
+worker processes and survives restarts. Because functions can't be stored in Redis or SQL,
+the step is stored as a **reference**:
+
+- Module-level functions (like `get_user_name` above) are referenced by import path - nothing to do.
+- Closures, methods or partials must be registered under a stable name, in every worker (i.e. at
+  import / app-factory time):
+
+  ```python
+  @wa_bot.register_step('get_user_name')
+  def get_user_name(update, context): ...
+  ```
+
+- Lambdas and unregistered nested functions are rejected by `set_next_step` with a
+  `NextStepNotSerializableError` - the same applies to `func=` filters and
+  `end_conversation_action=`. Keep step names / function names stable across deploys while
+  conversations are in flight; a reference that no longer resolves is logged and dropped, and
+  the message falls through to the regular handlers.
+- `wa_bot.clear_next_step(update_or_phone)` cancels a pending step; the user can also send
+  `end`, `stop` or `cancel` (configurable via `end_conversation_keyword_regex`).
+
+### Context storage backends
+
+| Backend | Install | Use when |
+|---|---|---|
+| `SQLiteStorage(path)` | nothing (stdlib) | several workers on **one** machine |
+| `RedisStorage(url)` | `pip install "python-whatsapp-bot[redis]"` | several machines / containers, fastest |
+| `SQLAlchemyStorage(url_or_engine)` | `pip install "python-whatsapp-bot[postgres]"` or `[mysql]` or `[sqlalchemy]` | Postgres, MySQL/MariaDB, SQLite or any SQLAlchemy database; reuse your app's engine |
+| `MemoryStorage()` | nothing | tests and single-process development **only** |
+
+```python
+from python_whatsapp_bot import RedisStorage, SQLAlchemyStorage, SQLiteStorage
+
+SQLiteStorage('bot_context.db')
+RedisStorage('redis://:password@localhost:6379/0')
+SQLAlchemyStorage('postgresql+psycopg://user:pass@host/db')
+SQLAlchemyStorage('mysql+pymysql://user:pass@host/db')
+SQLAlchemyStorage(engine=my_existing_engine)          # sync Engine or AsyncEngine
+```
+
+Every backend takes `ttl=<seconds>` to forget users automatically: a record is deleted `ttl`
+seconds after the user's last message (reads and writes both count as activity). Redis uses
+its native key expiry; SQLite/SQLAlchemy hide expired rows immediately and delete them in a
+throttled sweep on writes (`purge_interval`, default 5 min) or when you call
+`storage.purge_expired()` from a cron job.
+
+```python
+SQLAlchemyStorage('postgresql+psycopg://user:pass@host/db', ttl=30 * 24 * 3600)
+SQLiteStorage('bot_context.db', ttl=7 * 24 * 3600, purge_interval=None)  # sweep via cron only
+```
+
+Configure it per bot (`Whatsapp(..., context_storage=...)`, `wa_bot.set_context_storage(...)`)
+or once for the whole process:
+
+```python
+from python_whatsapp_bot import set_context_storage
+set_context_storage(RedisStorage('redis://localhost:6379/0'))
+```
+
+The syntax inside handlers is identical for every backend. Each update does one read before
+the handler runs and one write after it **only if `user_data` changed** (nested changes such as
+`context.user_data['cart'].append(...)` are detected too). Values must be JSON-serializable.
+
+#### Per-user locking (safe horizontal scaling)
+
+While an update is processed the bot holds a **per-user lock in the storage backend**, so two
+workers (threads, processes or machines) never process the same user at the same time and
+can't overwrite each other's `user_data`. Updates of one user are handled one at a time, in
+arrival order; different users are processed in parallel.
+
+```python
+wa_bot = Whatsapp(
+    number_id, token,
+    context_storage=RedisStorage('redis://...'),
+    context_lock=True,            # default
+    context_lock_timeout=60,      # a held lock expires after this many seconds (crashed worker protection)
+    context_lock_wait=10,         # max seconds to wait for a busy user before giving up
+)
+```
+
+If a user's lock is still busy after `context_lock_wait` seconds, `process_update` raises
+`ContextLockTimeoutError` **before anything was processed**. Answer the webhook with a non-2xx
+status and WhatsApp re-delivers the message with exponential backoff:
+
+```python
+from python_whatsapp_bot import ContextLockTimeoutError
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    try:
+        wa_bot.process_update(request.get_json())
+    except ContextLockTimeoutError:
+        return 'Busy, retry later', 503   # WhatsApp will re-push this message
+    return 'OK', 200
+```
+
+Set `context_lock=False` to opt out (last write wins). Custom `ContextStorage` subclasses get
+locking by implementing `lock()` - see the docs.
+
+Outside a handler:
+
+```python
+with wa_bot.user_context('2348145xxxxx') as ctx:     # saved when the block exits
+    ctx.user_data['vip'] = True
+```
+
+Need Mongo, DynamoDB, Firestore...? Subclass `ContextStorage` and implement `get`, `set` and
+`delete` - async support comes for free (override `aget`/`aset`/`adelete` for a native async
+client).
 
 ## 🔧 Advanced Features
 
@@ -384,11 +515,14 @@ wa_bot = Whatsapp(number_id='...', token='...', mark_as_read=True)  # Default
 The library includes comprehensive test suites for both sync and async functions.
 
 ```bash
-# Install dev dependencies
-pip install pytest pytest-asyncio pytest-httpx
+# Install the package in editable mode together with the dev dependencies
+pip install -e ".[dev]"
 
 # Run all tests
 pytest
+
+# Run the storage-backend tests against a real Redis server (fakeredis is used otherwise)
+WHATSAPP_TEST_REDIS_URL=redis://localhost:6379/15 pytest tests/test_context_storage.py
 
 # Run specific test file
 pytest tests/test_message.py
@@ -404,10 +538,13 @@ pytest --cov=python_whatsapp_bot
 
 ### Main Classes
 
-#### `Whatsapp(number_id, token, mark_as_read=True)`
+#### `Whatsapp(number_id, token, mark_as_read=True, context_storage=None, context_lock=True, context_lock_timeout=60, context_lock_wait=10)`
 Main bot class for interacting with WhatsApp Cloud API.
 
 **Methods:**
+- `set_context_storage()` / `context_storage` - Configure where the user context is stored
+- `user_context(phone_num)` - Access a user's context outside of a handler
+- `set_next_step()` / `clear_next_step()` / `get_next_step()` / `register_step()` - Multi-step conversations
 - `send_message()` / `asend_message()` - Send text messages
 - `send_template_message()` / `asend_template_message()` - Send template messages
 - `send_media_message()` / `asend_media_message()` - Send media files
@@ -431,6 +568,17 @@ Represents an incoming message update.
 - `reply_message()` - Reply to the message
 - `reply_media()` - Reply with media
 
+#### Context Storage
+
+- `ContextStorage` - Abstract base class (`get`, `set`, `delete` + async `aget`, `aset`, `adelete`; optional `lock`, `touch`, `purge_expired`)
+- `SQLiteStorage(path)`, `RedisStorage(url)`, `SQLAlchemyStorage(url | engine)`, `MemoryStorage()`
+- `set_context_storage(storage)` / `get_context_storage()` - Process-wide default
+- `User_context(phone_num, storage=None)` - `user_data`, `load()`, `save()`, `clear()` (+ async variants)
+- `ContextLock` - Per-user expiring lock returned by `storage.lock(key)` (sync + async context manager)
+- `ContextStorageNotConfiguredError` - Raised when context is used without a configured storage
+- `ContextLockTimeoutError` - Raised by `process_update` when a user's lock stays busy for `context_lock_wait` seconds
+- `NextStepNotSerializableError` - Raised by `set_next_step` for functions other workers could not resolve (register them with `register_step`)
+
 #### Markup Classes
 
 - `Inline_keyboard(buttons)` - Create button markup
@@ -453,6 +601,18 @@ pip install --upgrade python-whatsapp-bot httpx
 1. Verify webhook URL is registered in Facebook Developer Portal
 2. Ensure URL is publicly accessible (use ngrok for local testing)
 3. Check webhook verification token matches
+
+**`ContextStorageNotConfiguredError`:**
+A handler takes a `context` argument but no storage was configured. Pass
+`context_storage=SQLiteStorage(...)` / `RedisStorage(...)` / `SQLAlchemyStorage(...)` to
+`Whatsapp(...)` or call `set_context_storage(...)`. Do not use `MemoryStorage` with more than one
+worker process.
+
+**`ContextLockTimeoutError`:**
+Another worker was still processing a message from the same user after `context_lock_wait`
+seconds. Nothing was processed for this update: return a non-2xx status so WhatsApp retries.
+If it happens often, your handlers are slow - raise `context_lock_wait`, or make the handler
+faster (e.g. move long work to a background job).
 
 **Message Not Sending:**
 1. Verify phone number format (include country code without '+' or '00')

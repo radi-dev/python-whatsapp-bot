@@ -23,29 +23,59 @@ from .message import (
     amessage_location,
 )
 from .markup import Reply_markup
+from .context_storage import ContextStorage, DEFAULT_LOCK_TIMEOUT, DEFAULT_LOCK_WAIT
+from .user_context import User_context
 from typing import Any, Dict, Optional, Union
-from queue import Queue
 
 
 class Whatsapp:
 
-    def __init__(self, number_id, token, mark_as_read=True):
-        # type: (int, str, bool) -> None
+    def __init__(
+        self,
+        number_id,  # type: int
+        token,  # type: str
+        mark_as_read=True,  # type: bool
+        context_storage=None,  # type: Optional[ContextStorage]
+        context_lock=True,  # type: bool
+        context_lock_timeout=DEFAULT_LOCK_TIMEOUT,  # type: float
+        context_lock_wait=DEFAULT_LOCK_WAIT,  # type: float
+    ):
+        # type: (...) -> None
         """This is the main Whatsapp class. Use it to initialize your bot
         Args:
             id: Your phone number id provided by WhatsApp cloud
             token : Your token provided by WhatsApp cloud
             mark_as_read:(bool), Use to set whether incoming messages should be marked as read. Default is True
+            context_storage: Where the per-user ``context`` given to handlers is stored
+                (e.g. ``SQLiteStorage("bot.db")``, ``RedisStorage("redis://...")``,
+                ``SQLAlchemyStorage("postgresql://...")``). Falls back to the global
+                default set with :func:`python_whatsapp_bot.set_context_storage`.
+                Required as soon as any handler takes a ``context`` argument; the bot
+                raises :class:`ContextStorageNotConfiguredError` otherwise.
+            context_lock:(bool) Hold a per-user lock while an update is processed so
+                that two workers never process the same user concurrently. Default True.
+            context_lock_timeout: Seconds before a held lock expires by itself (protects
+                against crashed workers). Must exceed your slowest handler. Default 60.
+            context_lock_wait: Max seconds to wait for a user's lock. When exceeded
+                ``process_update`` raises :class:`ContextLockTimeoutError` before anything
+                was processed - answer the webhook with a non-2xx status and WhatsApp
+                re-delivers the message with exponential backoff. Default 10.
         """
         self.version_number = 21  # type: int
-        self.queue = Queue()  # type: Queue
         self.threaded = True  # type: bool
         self.id = number_id  # type: int
         self.token = token  # type: str
         self.base_url = f"https://graph.facebook.com/v{str(float(self.version_number))}"  # type: str
         self.msg_url = self.base_url + f"/{str(self.id)}/messages"  # type: str
         self.media_url = self.base_url + f"/{str(self.id)}/media"  # type: str
-        self.dispatcher = Dispatcher(self, mark_as_read)  # type: Dispatcher
+        self.dispatcher = Dispatcher(
+            self,
+            mark_as_read,
+            context_storage=context_storage,
+            context_lock=context_lock,
+            lock_timeout=context_lock_timeout,
+            lock_wait=context_lock_wait,
+        )  # type: Dispatcher
         self.on_message = self.dispatcher.add_message_handler
         self.on_interactive_message = self.dispatcher.add_interactive_handler
         self.on_image_message = self.dispatcher.add_image_handler
@@ -54,6 +84,36 @@ class Whatsapp:
         self.on_sticker_message = self.dispatcher.add_sticker_handler
         self.on_location_message = self.dispatcher.add_location_handler
         self.set_next_step = self.dispatcher.set_next_handler
+        self.clear_next_step = self.dispatcher.clear_next_step
+        self.get_next_step = self.dispatcher.get_next_step
+        self.register_step = self.dispatcher.register_step
+
+    @property
+    def context_storage(self):
+        # type: () -> Optional[ContextStorage]
+        """The storage backend configured for this bot's user context (or None)."""
+        return self.dispatcher.context_storage
+
+    @context_storage.setter
+    def context_storage(self, storage):
+        # type: (Optional[ContextStorage]) -> None
+        self.dispatcher.context_storage = storage
+
+    def set_context_storage(self, storage):
+        # type: (Optional[ContextStorage]) -> None
+        """Set (or replace) the storage backend used for the user context."""
+        self.context_storage = storage
+
+    def user_context(self, phone_num):
+        # type: (str) -> User_context
+        """Access a user's context outside of a handler, using this bot's storage.
+
+        Example::
+
+            with wa_bot.user_context("2348145xxxxx") as ctx:
+                ctx.user_data["vip"] = True   # saved when the block exits
+        """
+        return self.dispatcher.user_context(phone_num)
 
     def _set_base_url(self):
         # type: () -> None
@@ -103,20 +163,27 @@ class Whatsapp:
             tag_message=tag_message,
         )
 
+    @staticmethod
+    def _phone_of(update_or_phone):
+        # type: (Any) -> str
+        """Accept either an Update or a plain phone number."""
+        return str(getattr(update_or_phone, "user_phone_number", update_or_phone))
+
     def reply_template(self, update, template_name):
-        # type: (Update, str) -> Any
-        return self.send_template_message(update.user_phone_number, template_name)
+        # type: (Any, str) -> Any
+        return self.send_template_message(self._phone_of(update), template_name)
 
     def reply_media(
         self,
-        update,  # type: Update
+        update,  # type: Any
         image_path,  # type: str
         caption=None,  # type: Optional[str]
         media_provider_token=None,  # type: Optional[str]
     ):
         # type: (...) -> Any
+        """Reply with an image. ``update`` may be an Update or a phone number."""
         return self.send_media_message(
-            update.user_phone_number, image_path, caption, media_provider_token
+            self._phone_of(update), image_path, caption, media_provider_token
         )
 
     def send_message(
@@ -213,14 +280,14 @@ class Whatsapp:
         language_code=None,  # type: Optional[str]
     ):
         # type: (...) -> Any
-        """Sends preregistered template message"""
+        """Sends preregistered template message (``language_code`` defaults to ``en_US``)"""
         return message_template(
             self.msg_url,
             self.token,
             phone_num,
             template_name,
             components,
-            language_code,
+            language_code or "en_US",
         )
 
     async def asend_template_message(
@@ -231,14 +298,14 @@ class Whatsapp:
         language_code=None,  # type: Optional[str]
     ):
         # type: (...) -> Any
-        """Async version: Sends preregistered template message"""
+        """Async version: Sends preregistered template message (``language_code`` defaults to ``en_US``)"""
         return await amessage_template(
             self.msg_url,
             self.token,
             phone_num,
             template_name,
             components,
-            language_code,
+            language_code or "en_US",
         )
 
     def upload_media(self):
