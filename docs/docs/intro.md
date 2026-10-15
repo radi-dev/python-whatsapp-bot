@@ -4,84 +4,100 @@ sidebar_position: 1
 
 # Getting Started
 
-Welcome to **python-whatsapp-bot** - a modern, feature-rich Python library for building WhatsApp bots using the WhatsApp Business Cloud API.
+**python-whatsapp-bot** is a Python library for building WhatsApp bots on the
+[WhatsApp Business Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api). It
+handles the HTTP calls for sending messages, parses incoming webhook payloads, routes them to
+your handler functions, and keeps per-user conversation state in a storage backend of your
+choice.
 
-## What You'll Learn
+## What you get
 
-This documentation will guide you through:
+- **Sending** text, interactive (buttons, lists, location requests), template and image messages,
+  each with a sync (`send_message`) and an async (`asend_message`) variant.
+- **Receiving** text, button/list replies, images, audio, video, stickers and locations through
+  decorator-based handlers with regex or custom filters.
+- **Conversation state** - a per-user `context.user_data` dict and multi-step conversations
+  (`set_next_step`), stored in SQLite, Redis, Postgres, MySQL or your own backend, so the bot
+  works unchanged behind several worker processes.
+- **Safety for scaled deployments** - per-user locking, a retry contract with WhatsApp's webhook
+  re-delivery, and optional expiry of idle users' data.
 
-- ✅ Setting up your WhatsApp Business account
-- ✅ Installing and configuring the library
-- ✅ Sending various types of messages (text, media, templates)
-- ✅ Creating interactive messages with buttons and lists
-- ✅ Handling incoming messages with decorators
-- ✅ Using both sync and async versions of functions
-- ✅ Managing conversation state and context
-- ✅ Testing your bot
+## Prerequisites
 
-## Key Features
+1. A **WhatsApp Business account** on the [Meta for Developers](https://developers.facebook.com/)
+   portal, with the WhatsApp product added to an app.
+2. The **Phone Number ID** and an **access token** from that app - see
+   [Installation](./installation#whatsapp-business-setup).
+3. **Python 3.7+**.
 
-### 🔄 Sync & Async Support
-
-Every function has both synchronous and asynchronous versions:
-
-```python
-# Synchronous
-wa_bot.send_message('1234567890', 'Hello!')
-
-# Asynchronous
-await wa_bot.asend_message('1234567890', 'Hello!')
-```
-
-### 📝 Type Annotations
-
-Full type hints compatible with Python 3.6+:
-
-```python
-def send_message(
-    phone_num,  # type: str
-    text,  # type: str
-    msg_id="",  # type: str
-):
-    # type: (...) -> Any
-```
-
-### 🎯 Interactive Messages
-
-Easily create buttons, lists, and location requests:
-
-```python
-from python_whatsapp_bot import Inline_keyboard
-
-buttons = Inline_keyboard(['Option 1', 'Option 2'])
-wa_bot.send_message('1234567890', 'Choose:', reply_markup=buttons)
-```
-
-### 🤖 Decorator-Based Handlers
-
-Simple and intuitive message handling:
-
-```python
-@wa_bot.on_message(regex=r'^/start')
-def handle_start(update, context):
-    update.reply_message('Welcome!')
-```
-
-## Quick Installation
+## Install
 
 ```bash
 pip install --upgrade python-whatsapp-bot
 ```
 
-## Prerequisites
+## A minimal bot
 
-Before you begin, you'll need:
+```python
+from flask import Flask, request
+from python_whatsapp_bot import Whatsapp, SQLiteStorage
 
-1. **WhatsApp Business Account** - Sign up at [Facebook Developer Portal](https://developers.facebook.com/)
-2. **Phone Number ID** - Get this from your WhatsApp Business account
-3. **Access Token** - Generate from Facebook Developer Portal
-4. **Python 3.6+** - The library supports Python 3.6 and above
+wa_bot = Whatsapp(
+    number_id='YOUR_PHONE_NUMBER_ID',
+    token='YOUR_ACCESS_TOKEN',
+    context_storage=SQLiteStorage('bot_context.db'),   # where conversation state lives
+)
 
-## Next Steps
+@wa_bot.on_message(regex=r'^/start')
+def start(update, context):
+    context.user_data['greeted'] = True
+    update.reply_message('Welcome! Send me anything.')
 
-Ready to build your first bot? Continue to the Installation Guide to get started!
+@wa_bot.on_message()
+def echo(update, context):
+    prefix = 'Again? ' if context.user_data.get('greeted') else ''
+    update.reply_message(f'{prefix}You said: {update.message_text}')
+
+app = Flask(__name__)
+
+@app.route('/webhook', methods=['GET'])
+def verify():
+    if request.args.get('hub.verify_token') == 'YOUR_VERIFY_TOKEN':
+        return request.args.get('hub.challenge'), 200
+    return 'Forbidden', 403
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    wa_bot.process_update(request.get_json())
+    return 'OK', 200
+```
+
+Three things are happening here:
+
+1. `Whatsapp(...)` is your bot. It needs the phone number id and token, plus a
+   **context storage** - required as soon as any handler takes a `context` argument or uses
+   `set_next_step`. The library never keeps conversation state in process memory, because that
+   breaks the moment you run more than one worker. See [Context storage](./context-storage).
+2. `@wa_bot.on_message(...)` registers handlers. The first matching handler runs; `update` holds
+   the incoming message and `context.user_data` is this user's persistent dict. See
+   [Message handlers](./message-handlers).
+3. Your web framework receives WhatsApp's webhook calls and passes the JSON to
+   `wa_bot.process_update` (or `await wa_bot.dispatcher.aprocess_update` for async handlers).
+   See [Webhooks](./webhooks).
+
+## Sending a message outside a handler
+
+```python
+wa_bot.send_message('2348145xxxxx', 'Hello from Python!')
+```
+
+Phone numbers are international format without `+`, spaces or leading zeros.
+
+## Where to next
+
+- [Installation](./installation) - credentials, optional backend packages, dev setup
+- [Sending messages](./sending-messages) and [Interactive messages](./interactive-messages)
+- [Webhooks](./webhooks) - Flask / FastAPI examples and deployment with multiple workers
+- [Message handlers](./message-handlers) - filters, the `update` object, multi-step conversations
+- [Media handling](./media-handling) - receiving and downloading media
+- [Context storage](./context-storage) - backends, locking, expiry, next-step persistence

@@ -2,7 +2,6 @@
 
 import pytest
 from unittest.mock import Mock, AsyncMock
-from queue import Queue
 
 from python_whatsapp_bot.dispatcher import Dispatcher
 from python_whatsapp_bot.handler_classes import (
@@ -18,7 +17,6 @@ class TestAsyncUpdateProcessing:
     def setup_method(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)
@@ -211,7 +209,6 @@ class TestAsyncNextStepHandler:
     def setup_method(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)
@@ -270,6 +267,7 @@ class TestAsyncNextStepHandler:
         async def next_step(update, context):
             nonlocal next_step_called
             next_step_called = True
+        self.dispatcher.register_step('next_step')(next_step)
         
         self.dispatcher.set_next_handler(update_obj, next_step, handler_type=MessageHandler)
         
@@ -300,16 +298,17 @@ class TestAsyncNextStepHandler:
         
         async def next_step(update, context):
             pass
+        self.dispatcher.register_step('next_step')(next_step)
         
         self.dispatcher.set_next_handler(update_obj, next_step, handler_type=MessageHandler)
-        assert phone_number in self.dispatcher.next_step_handler
+        assert self.dispatcher.get_next_step(phone_number) is not None
         
         # Process next update
         update2 = self.create_text_update("second")
         await self.dispatcher.aprocess_update(update2)
         
         # Next step handler should be cleared
-        assert phone_number not in self.dispatcher.next_step_handler
+        assert self.dispatcher.get_next_step(phone_number) is None
 
     @pytest.mark.asyncio
     async def test_async_end_conversation_keyword(self):
@@ -320,10 +319,12 @@ class TestAsyncNextStepHandler:
         async def end_action(update, context):
             nonlocal end_action_called
             end_action_called = True
+        self.dispatcher.register_step('end_action')(end_action)
         
         async def next_step(update, context):
             nonlocal next_step_called
             next_step_called = True
+        self.dispatcher.register_step('next_step')(next_step)
         
         async def initial_handler(update, context):
             pass
@@ -357,7 +358,6 @@ class TestAsyncPersistentHandlers:
     def setup_method(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)
@@ -423,6 +423,7 @@ class TestAsyncPersistentHandlers:
         async def next_step(update, context):
             nonlocal next_step_called
             next_step_called = True
+        self.dispatcher.register_step('next_step')(next_step)
         
         self.dispatcher.set_next_handler(update_obj, next_step, handler_type=MessageHandler)
         
@@ -440,7 +441,6 @@ class TestAsyncInteractiveHandlers:
     def setup_method(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)
@@ -504,7 +504,6 @@ class TestAsyncErrorHandling:
     def setup_method(self):
         self.mock_bot = Mock()
         self.mock_bot.id = "123456789"
-        self.mock_bot.queue = Queue()
         self.mock_bot.threaded = False
         self.mock_bot.mark_as_read = Mock()
         self.dispatcher = Dispatcher(self.mock_bot)

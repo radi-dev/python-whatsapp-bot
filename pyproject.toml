@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "python-whatsapp-bot"
-version = "2.0.3"
-authors = [{name="Radi", email="evaradi18@gmail.com"},]
+version = "3.0.0"
 description = "A whatsapp client library for python using the new WhatsApp cloud API"
 readme = "README.md"
-license = { file="LICENSE" }
+license = { file = "LICENSE" }
 requires-python = ">=3.7"
+authors = [{ name = "Radi", email = "evaradi18@gmail.com" }]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -20,9 +20,30 @@ dependencies = [
     "httpx>=0.23.0",
 ]
 
-[options.packages.find]
-where = "src"
+[project.optional-dependencies]
+# Context storage backends (pick what you deploy with)
+redis = ["redis>=4.2"]
+sqlalchemy = ["sqlalchemy>=1.4"]
+postgres = ["sqlalchemy>=1.4", "psycopg[binary]>=3.1"]
+mysql = ["sqlalchemy>=1.4", "pymysql>=1.0"]
+# Everything needed to run the full test-suite
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-httpx>=0.22.0",
+    "redis>=4.2",
+    "fakeredis[lua]>=2.10",
+    "sqlalchemy[asyncio]>=1.4",
+    "aiosqlite>=0.17",
+]
 
 [project.urls]
-"Homepage" = "https://github.com/Radi-dev/python-whatsapp-cloud-bot"
+Homepage = "https://github.com/Radi-dev/python-whatsapp-cloud-bot"
 "Bug Tracker" = "https://github.com/Radi-dev/python-whatsapp-cloud-bot/issues"
+Documentation = "https://python-whatsapp-bot.radidev.com/docs/intro"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+python_whatsapp_bot = ["py.typed"]

@@ -4,241 +4,154 @@ sidebar_position: 3
 
 # Sending Messages
 
-Learn how to send different types of messages with python-whatsapp-bot.
+Every sending method exists in a synchronous form and an asynchronous form prefixed with `a`
+(`send_message` / `asend_message`). Both return the HTTP response of the Cloud API call - a
+`requests.Response` for sync calls, an `httpx.Response` for async calls - so you can inspect
+`response.status_code` and `response.json()`.
 
-## Text Messages
+Phone numbers are always given in international format without `+`, spaces or leading zeros:
+`'2348145xxxxx'`, not `'+234 814 5xxxxx'`.
 
-### Basic Text Message
-
-Send a simple text message:
+## Text messages
 
 ```python
-wa_bot.send_message('1234567890', 'Hello, World!')
+wa_bot.send_message('2348145xxxxx', 'Hello, World!')
+
+# async
+await wa_bot.asend_message('2348145xxxxx', 'Hello, World!')
+
+# disable the link preview
+wa_bot.send_message('2348145xxxxx', 'Read https://example.com', web_page_preview=False)
+
+# quote (reply to) a specific message
+wa_bot.send_message('2348145xxxxx', 'Replying to that', msg_id='wamid.HBgL...')
 ```
 
-### Async Version
+Inside a handler, `update.reply_message(text, ...)` does the same and quotes the incoming
+message automatically - see [Message handlers](./message-handlers).
+
+## Interactive messages
+
+Buttons, lists and location requests are text messages with a `reply_markup`:
 
 ```python
-await wa_bot.asend_message('1234567890', 'Hello, World!')
-```
+from python_whatsapp_bot import Inline_keyboard
 
-### With Web Preview
-
-Control link previews:
-
-```python
-# Disable preview
 wa_bot.send_message(
-    '1234567890',
-    'Check out https://example.com',
-    web_page_preview=False
-)
-
-# Enable preview (default)
-wa_bot.send_message(
-    '1234567890',
-    'Check out https://example.com',
-    web_page_preview=True
-)
-```
-
-### Reply to a Message
-
-Reply to a specific message:
-
-```python
-wa_bot.send_message(
-    '1234567890',
-    'This is a reply',
-    msg_id='original_message_id',
-    tag_message=True
+    '2348145xxxxx',
+    'Choose an option:',
+    reply_markup=Inline_keyboard(['Option 1', 'Option 2', 'Option 3']),
+    header='Main menu',         # optional; header_type='text' | 'image' | 'video' | 'document'
+    footer='Reply within 24h',  # optional
 )
 ```
 
-## Template Messages
+All markup types are described in [Interactive messages](./interactive-messages).
 
-Send pre-approved template messages:
+## Template messages
 
-### Basic Template
-
-```python
-wa_bot.send_template_message('1234567890', 'hello_world')
-```
-
-### Template with Parameters
+Templates are pre-approved messages you create in the WhatsApp Manager; they are the only
+messages you can send outside the 24-hour customer service window.
 
 ```python
+wa_bot.send_template_message('2348145xxxxx', 'hello_world')
+
 components = [
     {
         "type": "body",
         "parameters": [
             {"type": "text", "text": "John"},
-            {"type": "text", "text": "Order #12345"}
-        ]
+            {"type": "text", "text": "Order #12345"},
+        ],
     }
 ]
-
 wa_bot.send_template_message(
-    '1234567890',
-    'order_confirmation',
-    components=components,
-    language_code='en_US'
+    '2348145xxxxx', 'order_confirmation', components=components, language_code='en_US'
 )
+
+await wa_bot.asend_template_message('2348145xxxxx', 'hello_world')
 ```
 
-### Async Template
+`components` follows the
+[Cloud API template format](https://developers.facebook.com/docs/whatsapp/cloud-api/messages/template-messages)
+verbatim; `language_code` defaults to `en_US`.
 
-```python
-await wa_bot.asend_template_message(
-    '1234567890',
-    'hello_world'
-)
-```
-
-## Media Messages
-
-### Send Image
-
-From URL:
+## Image messages
 
 ```python
 wa_bot.send_media_message(
-    '1234567890',
+    '2348145xxxxx',
     'https://example.com/image.jpg',
-    caption='Check this out!'
+    caption='Check this out!',
 )
+
+await wa_bot.asend_media_message('2348145xxxxx', 'https://example.com/image.jpg')
 ```
 
-Async version:
+:::note
+`send_media_message` currently sends **images by public URL** only (the Cloud API `image` +
+`link` form). Sending other media types or uploading local files is not implemented yet; for
+those, call the Cloud API directly with the `wa_bot.msg_url` / `wa_bot.token` attributes.
+:::
+
+Receiving and downloading media is covered in [Media handling](./media-handling).
+
+## Location messages
+
+There is no wrapper on the bot object yet; use the underlying function with the bot's URL and
+token:
 
 ```python
-await wa_bot.asend_media_message(
-    '1234567890',
-    'https://example.com/image.jpg',
-    caption='Amazing photo!'
-)
-```
-
-### Supported Media Types
-
-The library supports:
-- **Images**: JPG, PNG, GIF
-- **Videos**: MP4, 3GPP
-- **Audio**: MP3, AAC, OGG
-- **Documents**: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX
-- **Stickers**: WEBP with transparency
-
-## Location Messages
-
-Send a location:
-
-```python
-from python_whatsapp_bot.message import message_location
+from python_whatsapp_bot.message import message_location, amessage_location
 
 message_location(
-    wa_bot.msg_url,
-    wa_bot.token,
-    '1234567890',
-    latitude='37.7749',
-    longitude='-122.4194',
-    location_name='San Francisco',
-    location_address='California, USA'
+    wa_bot.msg_url, wa_bot.token, '2348145xxxxx',
+    latitude='37.7749', longitude='-122.4194',
+    location_name='San Francisco', location_address='California, USA',
 )
+
+await amessage_location(wa_bot.msg_url, wa_bot.token, '2348145xxxxx',
+                        latitude='37.7749', longitude='-122.4194')
 ```
 
-Async version:
+To *ask* the user for their location, send an `InlineLocationRequest` markup - see
+[Interactive messages](./interactive-messages#location-request).
+
+## Marking messages as read
+
+Incoming messages are marked as read automatically (`Whatsapp(..., mark_as_read=True)`, the
+default). To do it yourself, pass the raw message dict from the webhook payload:
 
 ```python
-from python_whatsapp_bot.message import amessage_location
-
-await amessage_location(
-    wa_bot.msg_url,
-    wa_bot.token,
-    '1234567890',
-    latitude='37.7749',
-    longitude='-122.4194',
-    location_name='San Francisco',
-    location_address='California, USA'
-)
+wa_bot = Whatsapp(number_id, token, mark_as_read=False)
+wa_bot.mark_as_read(update.message)          # sync
+await wa_bot.amark_as_read(update.message)   # async
 ```
 
-## Best Practices
-
-### Phone Number Format
-
-Always use the international format without `+` or spaces:
+## Checking the result
 
 ```python
-# ✅ Correct
-wa_bot.send_message('1234567890', 'Hello')
-
-# ❌ Incorrect
-wa_bot.send_message('+1 234 567 890', 'Hello')
-wa_bot.send_message('+1234567890', 'Hello')
+response = wa_bot.send_message('2348145xxxxx', 'Hello')
+body = response.json()
+if response.ok:
+    print('sent, id:', body['messages'][0]['id'])
+else:
+    print('error:', body['error']['message'])
 ```
 
-### Error Handling
+The library does not retry or raise on API errors; network failures raise the usual
+`requests` / `httpx` exceptions after a 30 second timeout.
 
-Always handle potential errors:
+## Sending many messages
 
-```python
-try:
-    response = wa_bot.send_message('1234567890', 'Hello')
-    if response.status_code == 200:
-        print("Message sent successfully!")
-    else:
-        print(f"Error: {response.status_code}")
-except Exception as e:
-    print(f"Failed to send message: {e}")
-```
-
-### Rate Limiting
-
-WhatsApp has rate limits. Implement proper throttling:
-
-```python
-import time
-
-messages = ['Message 1', 'Message 2', 'Message 3']
-
-for msg in messages:
-    wa_bot.send_message('1234567890', msg)
-    time.sleep(1)  # Wait 1 second between messages
-```
-
-### Async for Performance
-
-Use async functions for better performance with multiple messages:
+Async calls can run concurrently:
 
 ```python
 import asyncio
 
-async def send_bulk_messages():
-    tasks = []
-    for i in range(10):
-        task = wa_bot.asend_message('1234567890', f'Message {i}')
-        tasks.append(task)
-    
-    await asyncio.gather(*tasks)
-
-asyncio.run(send_bulk_messages())
+async def notify(numbers):
+    await asyncio.gather(*(wa_bot.asend_message(n, 'Maintenance tonight at 23:00') for n in numbers))
 ```
 
-## Message Status
-
-Check if a message was delivered:
-
-```python
-response = wa_bot.send_message('1234567890', 'Hello')
-result = response.json()
-
-if result.get('messages'):
-    message_id = result['messages'][0]['id']
-    print(f"Message ID: {message_id}")
-```
-
-## Next Steps
-
-- Learn about [Interactive Messages](./interactive-messages)
-- Set up [Message Handlers](./message-handlers)
-- Explore [Media Handling](./media-handling)
+Respect the Cloud API's rate limits and the 24-hour window - messages outside it must be
+templates.

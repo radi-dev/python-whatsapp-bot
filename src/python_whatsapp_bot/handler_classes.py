@@ -136,22 +136,36 @@ class UpdateHandler:
             return bool(self.func(msg))
         return True
 
+    def _accepted_args(self):
+        # type: () -> list
+        if self.action is None:
+            return []
+        try:
+            return list(inspect.getfullargspec(self.action).args)
+        except TypeError:
+            return []
+
+    def wants_context(self):
+        # type: () -> bool
+        """True if this handler's function will be passed the user context.
+
+        Requires ``context=True`` (the default) *and* a ``context`` parameter
+        in the function signature. Only such handlers need a context storage.
+        """
+        return bool(self.context) and "context" in self._accepted_args()
+
+    def _filter_kwargs(self, kwargs):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
+        accepted = self._accepted_args()
+        return {key: val for key, val in kwargs.items() if key in accepted}
+
     def run(self, *args, **kwargs):
         # type: (*Any, **Any) -> Any
-        new_kwargs = {
-            key: val
-            for key, val in kwargs.items()
-            if key in inspect.getfullargspec(self.action).args
-        }
-        return self.action(*args, **new_kwargs)
+        return self.action(*args, **self._filter_kwargs(kwargs))
 
     async def arun(self, *args, **kwargs):
         # type: (*Any, **Any) -> Any
-        new_kwargs = {
-            key: val
-            for key, val in kwargs.items()
-            if key in inspect.getfullargspec(self.action).args
-        }
+        new_kwargs = self._filter_kwargs(kwargs)
         if not inspect.iscoroutinefunction(self.action):
             raise TypeError(
                 f"function {self.action.__name__} must be an async function (coroutine), but it is not."
